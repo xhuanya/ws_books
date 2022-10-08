@@ -1,0 +1,21 @@
+/* .ant-tree .ant-tree-node-content-wrapper.ant-tree-node-selected {
+    background-color: unset !important;
+} */
+
+.ant-tree .ant-tree-treenode,
+.ant-tree .ant-tree-node-content-wrapper {
+    /* width: 100% !important; */
+    width: 12vw;
+}
+
+.tree-dir {
+    width: 100%;
+}
+
+.tree-dir .left {
+    float: left;
+}
+
+.tree-dir .right {
+    float: right;
+}

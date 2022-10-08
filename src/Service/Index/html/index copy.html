@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <script src="https://unpkg.com/vue@next"></script>
+    <!-- import CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.0.2/tinymce.min.js" integrity="sha512-Cwez4r594AFwCqWzXklkW90mGiJCKJBhcFb8GsWWtb0coKuR9uv1ozODWidI/8Lr9iKunYaXLPf6VJtL3rXzyQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <!-- import JavaScript -->
+    <script src="https://unpkg.com/element-plus"></script>
+    <script src="https://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
+
+
+    <title>幻笔记</title>
+    <style>
+        #full {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .login_card {
+            margin: 0 auto;
+        }
+        
+        .common-layout {
+            height: 100%;
+        }
+        
+        .common-layout .el-container {
+            height: 100%;
+        }
+        
+        .header {
+            background: red;
+        }
+        
+        .left {}
+        
+        .contextmenu__item {
+            display: block;
+            line-height: 34px;
+            text-align: center;
+        }
+        
+        .contextmenu__item:not(:last-child) {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .menu {
+            top: 0px;
+            left: 0px;
+            position: absolute;
+            background-color: #fff;
+            width: 100px;
+            /*height: 106px;*/
+            font-size: 12px;
+            color: #444040;
+            border-radius: 4px;
+            -webkit-box-sizing: border-box;
+            box-sizing: border-box;
+            border-radius: 3px;
+            border: 1px solid rgba(0, 0, 0, 0.15);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
+            white-space: nowrap;
+            z-index: 1000;
+        }
+        
+        .contextmenu__item:hover {
+            cursor: pointer;
+            background: #66b1ff;
+            border-color: #66b1ff;
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <view id="full" v-loading="loading">
+            <!-- 登录 -->
+            <view v-show="showLogin">
+                <el-row :gutter="12" style="padding: 24% 0px;">
+                    <el-col :span="8" :offset="8">
+                        <el-card shadow="always" class="login_card">
+                            <el-row :gutter="12">
+                                <el-col :span="18">
+                                    <el-input v-model="password" @keyup.enter.native="checkLogin" type="password" placeholder="请输入密码" /></el-col>
+                                <el-col :span="4">
+                                    <el-button @click="checkLogin">登录</el-button>
+                                </el-col>
+                            </el-row>
+                        </el-card>
+                    </el-col>
+                </el-row>
+            </view>
+            <!-- 文章显示 -->
+            <view v-show="showbooks">
+                <div class="common-layout" style="padding: 0px;">
+                    <el-container>
+                        <el-header class="header">Header</el-header>
+                        <el-container>
+                            <!-- 左侧目录树 -->
+                            <el-aside width="200px" class="left">
+                                <view @click.right="menuClick">
+                                    <!-- 选择book -->
+                                    <el-select v-model="selectBook" class="m-2" @change="changebook" placeholder="选择笔记本" empty-text="没有笔记目录" size="large">
+                                        <el-option v-for="item in booksData" :key="item.ID" :label="item.Text" :value="item.ID" />
+                                    </el-select>
+                                    <!-- 目录选择 -->
+                                    <el-tree :data="catalogdata" @node-click="selectNode" node-key="id" :default-expand-all="true" :Props="{children:'Children'}" @node-contextmenu="treeMenuClick">
+                                        <template #default="{ node, data }">
+                                            <span class="custom-tree-node">
+                                            <view  v-show="data.Type==1" ><svg style="height:15px;" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" data-v-78e17ca8=""><path fill="currentColor" d="M128 192v640h768V320H485.76L357.504 192H128zm-32-64h287.872l128.384 128H928a32 32 0 0 1 32 32v576a32 32 0 0 1-32 32H96a32 32 0 0 1-32-32V160a32 32 0 0 1 32-32z"></path></svg></view>
+                                        <span>[{{data.ID}}]{{ data.Text }}</span>
+                                        </span>
+                                        </template>
+                                    </el-tree>
+                                </view>
+                            </el-aside>
+                            <el-main>
+                                <el-row :gutter="5">
+                                    <el-col :span="23">
+                                        <el-input v-model="title" placeholder="请输入标题" /></el-col>
+                                    <el-col :span="1">
+                                        <el-button @click="saveNote">保存</el-button>
+                                        <el-button @click="()=>{this.wsSend(100,'{}')}">测试</el-button>
+
+                                    </el-col>
+                                </el-row>
+                                <el-row style="padding-top: 10px;">
+                                    <el-col :span="24"><textarea id="edit"></textarea></el-col>
+                                </el-row>
+                            </el-main>
+                        </el-container>
+                    </el-container>
+                </div>
+                <!-- 笔记本创建 -->
+                <el-dialog v-model="createBookdialogVisible" title="创建笔记本" width="30%" :before-close="handleClose">
+                    <view>
+                        <el-input v-model="bookName" placeholder="请输入书本名称" />
+                    </view>
+                    <template #footer>
+                  <span class="dialog-footer">
+                    <el-button @click="createBookdialogVisible=false">取消</el-button>
+                    <el-button type="primary" @click="createBook"
+                      >创建</el-button
+                    >
+                  </span>
+                </template>
+                </el-dialog>
+                <!-- 目录新建 -->
+                <el-dialog v-model="createcatalogdialogVisible" title="创建目录" width="30%" :before-close="handleClose">
+                    <view>
+                        <el-input v-model="catalogName" placeholder="请输入目录名称" />
+                    </view>
+                    <template #footer>
+                  <span class="dialog-footer">
+                    <el-button @click="createcatalogdialogVisible=false">取消</el-button>
+                    <el-button type="primary" @click="createCatalog"
+                      >创建</el-button
+                    >
+                  </span>
+                </template>
+                </el-dialog>
+            </view>
+        </view>
+        <!-- 右键菜单 -->
+        <view>
+            <div id="contextmenu" v-show="menuVisible" class="menu">
+                <div class="contextmenu__item" @click="()=>{menuVisible=false;createBookdialogVisible=true;}">新建笔记</div>
+                <div class="contextmenu__item" @click="()=>{menuVisible=false;createcatalogdialogVisible=true;}">新建目录</div>
+                <div class="contextmenu__item" @click="EditData(CurrentRow)">删除目录</div>
+            </div>
+        </view>
+    </div>
+    <script>
+        var data = [{
+            "Type": 1,
+            "BookId": "a29f6e51-a22a-4de2-a9a9-acbdb823b815",
+            "Text": "123",
+            "ID": "1",
+            "Content": "",
+            "Children": [{
+                "Type": 1,
+                "BookId": "a29f6e51-a22a-4de2-a9a9-acbdb823b815",
+                "Text": "222",
+                "ParentID": "1",
+                "ID": "1.2",
+                "Children": []
+            }]
+        }];
+
+        const cmds = {
+            heartbeat: 0,
+            login: 1,
+            //没有登录
+            failNotLogin: 2,
+            //笔记本
+            books: 3,
+            //创建书本
+            createBook: 4,
+            //目录或文字
+            Notes: 5,
+            //创建目录或者文章
+            createNotes: 6,
+        }
+        const debug = true;
+        const App = {
+
+            data() {
+                return {
+                    //密码
+                    "password": "admin",
+                    "loading": true,
+                    //登录标识
+                    "showLogin": false,
+                    "socket": null,
+                    heartbeat: null,
+                    //显示文章
+                    showbooks: false,
+                    //查看的笔记本
+                    selectBook: "",
+                    //book数据
+                    booksData: [],
+                    //目录数据
+                    catalogdata: [],
+                    catalogName: "",
+                    //打开创建书本
+                    createBookdialogVisible: false,
+                    //创建书本的名称
+                    bookName: "",
+                    menuVisible: false,
+                    //创建目录
+                    createcatalogdialogVisible: false,
+                    //上级目录
+                    parendCatalog: "",
+                    edit: null,
+                    //保存的文章标题
+                    title: "",
+
+                };
+            },
+            methods: {
+
+                selectNode: function(a, b, c) {
+                    this.parendCatalog = a;
+                    debugger
+                    //如果点击到了文章
+                    if (a.Type == 2) {
+                        this.wsSend(cmds.Notes, JSON.stringify({
+                            type: 2,
+                            ID: a.ID,
+                            BookID: this.selectBook,
+                        }))
+                    }
+                },
+                saveNote: function() {
+                    var html = tinymce.get('edit').getContent();
+                    this.wsSend(cmds.createNotes, JSON.stringify({
+                        Type: 2,
+                        BookId: this.selectBook,
+                        Text: this.title,
+                        ParentID: this.parendCatalog.ID,
+                        Content: html
+                    }))
+                },
+                treeMenuClick: function(row, column, event) {
+                    this.menuVisible = true;
+                    var menu = document.querySelector('#contextmenu');
+                    menu.style.left = row.clientX + 'px';
+                    menu.style.top = row.clientY + 'px';
+                    this.parendCatalog = event.data;
+                },
+                menuClick: function(event) {
+                    this.menuVisible = true;
+                    var menu = document.querySelector('#contextmenu');
+                    menu.style.left = event.clientX + 'px';
+                    menu.style.top = event.clientY + 'px';
+                    event.stopPropagation()
+                    event.preventDefault()
+                },
+                changebook: function(BookId) {
+                    this.catalogdata = null;
+                    this.wsSend(cmds.Notes, JSON.stringify({
+                        BookID: BookId,
+                        Type: 1,
+                    }))
+                },
+                createCatalog: function() {
+
+                    this.wsSend(cmds.createNotes, JSON.stringify({
+                        Type: 1,
+                        BookId: this.selectBook,
+                        Text: this.catalogName,
+                        ParentID: this.parendCatalog.ID
+                    }))
+                    this.createcatalogdialogVisible = false;
+                },
+                monitorSocket: function() {
+                    var self = this;
+                    var siteUrl = new URL(location.href);
+                    var wsUrl = "ws://";
+                    if (siteUrl.protocol == "https:") {
+                        wsUrl = "wss://"
+                    }
+                    wsUrl += siteUrl.hostname + "/ws"
+                        //连接socket
+                    this.socket = new WebSocket(wsUrl)
+
+                    this.socket.addEventListener("open", function(ws) {
+                        if (ws.target.readyState == 1) {
+                            self.$message({
+                                type: 'success',
+                                message: '服务器连接成功！',
+                            });
+                            self.loading = false;
+                            self.showLogin = true;
+                            // self.checkLogin()
+                            //发送心跳数据
+                            this.heartbeat = setInterval(function() {
+                                self.socket.send(JSON.stringify({
+                                    "cmd": cmds.heartbeat
+                                }));
+                            }, 1000)
+                        } else {
+                            self.$message({
+                                type: 'error',
+                                message: '连接错误！',
+                            });
+                        }
+                    });
+                    //监听消息
+                    this.socket.addEventListener("message", function(msg) {
+                        var messageProto = JSON.parse(msg.data);
+                        if (debug) {
+                            console.log(messageProto);
+                        }
+                        if (messageProto.status != 200) {
+                            self.$message({
+                                type: 'error',
+                                message: messageProto.message,
+                            });
+
+                        }
+                        switch (messageProto.cmd) {
+                            case 100:
+
+                                break;
+                                //登录
+                            case cmds.login:
+                                if (messageProto.status == 200) {
+                                    self.$message({
+                                        type: 'success',
+                                        message: messageProto.message,
+                                    });
+                                    self.showLogin = false;
+                                    self.showbooks = true;
+                                }
+                                break;
+                            case cmds.books:
+                                if (messageProto.data.length == 0) {
+                                    self.$message({
+                                        showClose: true,
+                                        message: '请先创建笔记本',
+                                    });
+                                    self.createBookdialogVisible = true;
+                                } else {
+                                    self.booksData = messageProto.data;
+                                }
+
+                                break;
+                            case cmds.createBook:
+                                if (messageProto.status == 200) {
+                                    self.$message({
+                                        type: 'success',
+                                        message: messageProto.message,
+                                    });
+                                    self.createBookdialogVisible = false;
+                                }
+                                break;
+                                //回调或者分类
+                            case cmds.Notes:
+                                if (messageProto.data.type == 1) {
+                                    self.catalogdata = messageProto.data.notes
+                                } else {
+                                    self.title = messageProto.data.notes.Text;
+                                    tinymce.get('edit').setContent(messageProto.data.notes.Content);
+                                }
+                                break;
+                        }
+
+                    });
+
+                },
+                /**
+                 * 创建书本
+                 */
+                createBook: function() {
+                    this.wsSend(cmds.createBook, JSON.stringify({
+                        Text: this.bookName
+                    }));
+                    this.bookName = "";
+
+                },
+                /**
+                 * 登录
+                 */
+                checkLogin: function() {
+                    this.wsSend(cmds.login, this.password);
+                },
+                /**
+                 *发送消息 
+                 */
+                wsSend: function(cmd, data) {
+                    this.socket.send(JSON.stringify({
+                        'cmd': cmd,
+                        'data': data
+                    }));
+                },
+            },
+            /**
+             *初始化方法 
+             */
+            created: function() {
+                this.monitorSocket();
+                let pwd = localStorage.getItem("password")
+                    // this.catalogdata.push({
+                    //     id: 1,
+                    //     label: 'test'
+                    // });
+                var self = this;
+                this.loading = false;
+                this.showLogin = true;
+                $(document).bind('click', function(e) {
+
+                    if (!$(this).parent('#contextmenu')[0] || $(this).attr('id') != 'contextmenu') {
+                        self.menuVisible = false;
+                    }
+                });
+                this.edit = tinymce.init({
+                    selector: '#edit',
+                    language: 'zh_CN'
+                });
+            }
+        };
+        const app = Vue.createApp(App);
+        app.use(ElementPlus);
+        app.mount("#app");
+    </script>
+</body>
+
+</html>

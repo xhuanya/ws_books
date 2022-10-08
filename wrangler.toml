@@ -1,0 +1,11 @@
+kv_namespaces = [
+  {binding = "myKVBooks", id = "e0f9cb5739864f09b251cdefbf208eca", preview_id = "e0f9cb5739864f09b251cdefbf208eca"}, # {binding = "myKVBooks", id = "5a40c88cd2e245fc9e3289998e2fbe6b", preview_id = "5a40c88cd2e245fc9e3289998e2fbe6b"},
+]
+name = "mybook"
+workers_dev = true
+compatibility_date = "2022-08-30"
+[build]
+command = "npm install && npm run build"
+[vars]
+PassWord = "admin"
+SayHello = "欢迎访问小幻的websocket 学习项目 演示密码为：admin"
